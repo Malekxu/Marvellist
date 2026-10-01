@@ -1,74 +1,105 @@
 <!DOCTYPE html>
 <html lang="en">
-  <head>
-    <meta charset="UTF-8" />
-    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-    <title>Marvellist</title>
-    <style>
-      :root {
-        --bg: #0f172a;
-        --card: #111827;
-        --text: #e5e7eb;
-        --muted: #9ca3af;
-        --accent: #38bdf8;
-      }
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>MCU Watchlist</title>
+<style>
+  body { font-family: Arial, sans-serif; background:#111; color:#fff; margin:0; padding:20px; }
+  .wrap { max-width:700px; margin:auto; }
+  h1 { text-align:center; margin-bottom:8px; }
+  #count { text-align:center; color:#bbb; margin-bottom:20px; }
+  label { display:flex; align-items:center; gap:7px; padding:5px 7px; margin:4px 0;
+          background:#1e1e1e; border-radius:7px; cursor:pointer; font-size:13px; }
+  input { width:18px; height:18px; min-width:18px; accent-color:#4caf50; }
+  .rating { min-width:34px; text-align:center; font-weight:bold; color:#ffd54f; font-size:11px; }
+  .status { min-width:90px; text-align:center; font-size:10px; font-weight:bold;
+            padding:3px 4px; border-radius:5px; }
+  .essential { background:#244f2a; color:#9cffaa; }
+  .optional { background:#5a4a16; color:#ffe38a; }
+    .notneeded { background:#303030; color:#999; }
+  .format { min-width:67px; text-align:center; font-size:9px; color:#aaa; }
+  .title { flex:1; }
+  label.done { opacity:.6; }
+  label.done .title { text-decoration:line-through; }
+  button { display:block; margin:18px auto; padding:10px 16px; border:0;
+           border-radius:8px; cursor:pointer; }
+</style>
+</head>
+<body>
+<div class="wrap">
+<h1>🎬 MCU Watchlist</h1>
+<div id="count"></div>
+<div id="list"></div>
+<button onclick="resetList()">Reset all</button>
+</div>
+<script>
+const movies = [
+"Captain America: The First Avenger","Captain Marvel","Iron Man","Iron Man 2",
+"The Incredible Hulk","Thor","The Avengers","Iron Man 3","Thor: The Dark World",
+"Captain America: The Winter Soldier","Guardians of the Galaxy","Guardians of the Galaxy Vol. 2",
+"I Am Groot — Season 1","I Am Groot — Season 2","Avengers: Age of Ultron","Ant-Man",
+"Captain America: Civil War","Black Widow","Black Panther","Spider-Man: Homecoming",
+"Doctor Strange","Thor: Ragnarok","Ant-Man and the Wasp","Avengers: Infinity War",
+"Avengers: Endgame","Loki — Season 1","What If...? — Season 1","WandaVision",
+"The Falcon and the Winter Soldier","Shang-Chi and the Legend of the Ten Rings",
+"Spider-Man: Far From Home","Eternals","Spider-Man: No Way Home",
+"Doctor Strange in the Multiverse of Madness","Hawkeye","Moon Knight",
+"Black Panther: Wakanda Forever","Echo","She-Hulk: Attorney at Law","Ms. Marvel",
+"Thor: Love and Thunder","Werewolf by Night","The Guardians of the Galaxy Holiday Special",
+"Ant-Man and the Wasp: Quantumania","Guardians of the Galaxy Vol. 3","Secret Invasion",
+"The Marvels","Loki — Season 2","What If...? — Season 2","Deadpool & Wolverine",
+"Agatha All Along","What If...? — Season 3","Captain America: Brave New World",
+"Daredevil: Born Again — Season 1","Thunderbolts*","The Fantastic Four: First Steps"
+];
 
-      * {
-        box-sizing: border-box;
-      }
+const initiallyChecked = new Set([1,2,3,4,5,6,7,8,9,10,11,15,17,22,24,25,41,50,55]);
+const saved = JSON.parse(localStorage.getItem("mcu_doomsday_watchlist_local") || "null");
+const checked = saved ? new Set(saved) : initiallyChecked;
 
-      body {
-        margin: 0;
-        font-family: Arial, sans-serif;
-        background: linear-gradient(135deg, var(--bg), #1e293b);
-        color: var(--text);
-        min-height: 100vh;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-      }
+const ratings = [8.0,6.7,7.9,6.6,6.6,7.0,8.0,6.9,6.7,7.8,8.0,7.6,6.7,6.8,7.3,6.4,7.8,6.7,7.3,7.4,7.5,7.9,6.9,8.4,8.4,8.2,7.4,7.9,7.8,7.8,7.4,6.3,7.9,6.8,7.5,7.3,6.9,6.9,6.4,6.1,6.2,6.4,7.5,6.1,7.9,5.9,5.5,8.2,7.2,7.7,7.3,7.0,6.7,7.2,6.9,7.2];
+const doomsday = new Set([1,2,3,4,5,6,7,9,10,11,12,15,17,18,19,21,22,23,24,25,26,27,28,29,30,31,33,34,35,36,37,38,40,41,43,45,47,48,49,50,51,52,53,54,55,56]);
+const optional = new Set([8,13,14,16,20,32,39,42,44,46]);
+const notNeeded = new Set([28,29,35,36,39,40,42,44,46,51]);
+const animated = new Set([13,14,27,49,52]);
+const doomsdayOrder = new Map();
+let doomsdayOrderNumber = 1;
+movies.forEach((_, i) => {
+  const n = i + 1;
+  if (doomsday.has(n) && !notNeeded.has(n)) {
+    doomsdayOrder.set(n, doomsdayOrderNumber++);
+  }
+});
 
-      .container {
-        width: min(900px, 90vw);
-        background: rgba(17, 24, 39, 0.9);
-        border: 1px solid rgba(148, 163, 184, 0.2);
-        border-radius: 16px;
-        padding: 40px;
-        box-shadow: 0 20px 40px rgba(0, 0, 0, 0.3);
-      }
 
-      h1 {
-        margin-top: 0;
-        font-size: clamp(2rem, 6vw, 4rem);
-        color: var(--accent);
-      }
-
-      p {
-        color: var(--muted);
-        font-size: 1.1rem;
-        line-height: 1.7;
-      }
-
-      .button {
-        display: inline-block;
-        margin-top: 16px;
-        padding: 12px 20px;
-        background: var(--accent);
-        color: #082f49;
-        text-decoration: none;
-        border-radius: 10px;
-        font-weight: bold;
-      }
-    </style>
-  </head>
-  <body>
-    <div class="container">
-      <h1>Welcome to Marvellist</h1>
-      <p>
-        This is a simple HTML website created in your repository. You can edit this file
-        to add your own content, sections, images, or links.
-      </p>
-      <a class="button" href="#">Learn More</a>
-    </div>
-  </body>
+function render() {
+  const list = document.getElementById("list");
+  list.innerHTML = "";
+  movies.forEach((name, i) => {
+    const n = i + 1;
+    const label = document.createElement("label");
+    if (checked.has(n)) label.classList.add("done");
+    const statusClass = notNeeded.has(n) ? "notneeded" : doomsday.has(n) ? "essential" : "optional";
+    const statusText = notNeeded.has(n) ? "NOT NEEDED" : doomsday.has(n) ? `DOOMSDAY #${doomsdayOrder.get(n)}` : "OPTIONAL";
+    label.innerHTML = `<input type="checkbox" ${checked.has(n) ? "checked" : ""}>
+      <span class="title">${n}. ${name}</span>
+      <span class="status ${statusClass}">${statusText}</span><span class="format">${animated.has(n) ? "CARTOON" : "LIVE ACTION"}</span>
+      <span class="rating">${ratings[i]}/10</span>`;
+    label.querySelector("input").addEventListener("change", e => {
+      if (e.target.checked) checked.add(n); else checked.delete(n);
+      localStorage.setItem("mcu_doomsday_watchlist_local", JSON.stringify([...checked]));
+      render();
+    });
+    list.appendChild(label);
+  });
+  document.getElementById("count").textContent = `${checked.size} / ${movies.length} watched`;
+}
+function resetList() {
+  checked.clear();
+  localStorage.setItem("mcu_doomsday_watchlist_local", "[]");
+  render();
+}
+render();
+</script>
+</body>
 </html>
